@@ -41,20 +41,25 @@ This will open the Lumi web application in your default browser.
 Add a New Habit: Enter the habit you wish to track along with the desired daily frequency. Lumi will track how often the habit is completed.
 Update a Habit: Select a habit and mark it as completed or incomplete for the day. Lumi will update the completion rate accordingly.
 View Habits: See all your tracked habits and their completion rates in the form of a table.
+
 5. Daily Routine Analysis Tab
 Brief Routine Analysis: Input your daily routine as text. Lumi will use the Gemini API to generate a brief analysis based on the routine you provided.
 Detailed Routine Analysis: Optionally, Lumi can provide a more detailed analysis of your routine, offering insights into productivity, time management, and energy levels, along with recommendations.
 Previous Analyses: View a table of previous routine analyses, including dates and insights for each.
+
 File Storage
 habits.csv: Stores all your tracked habits, including their completion rates and last completed date.
 analysis.csv: Stores your daily routine analyses, including the date, routine details, and AI-generated insights.
+
 Troubleshooting
 Ensure you have set up the Google Gemini API key correctly. If the key is invalid or missing, you may encounter errors when trying to generate routine analyses.
 CSV files must be in the same directory as the application for loading and saving habit and analysis data.
+
 Future Enhancements
 Reminder System: Add notifications or reminders to help users stay on track with their habits.
 Advanced Insights: Offer additional types of analyses based on the user's preferences or goals.
 Visualizations: Add graphs and charts to represent habit completion and routine improvements over time.
+
 License
 This project is licensed under the MIT License.
 
