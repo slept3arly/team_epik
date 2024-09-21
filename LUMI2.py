@@ -52,7 +52,7 @@ class AdvancedLumi:
         return "Habit not found."
 
     def get_brief_routine_analysis(self, routine):
-        prompt = f"Provide a brief, one-sentence analysis of the following daily routine:\n\n{routine}"
+        prompt = f"Analyze the following daily routine and provide a concise two-sentence summary. Highlight any strengths, potential areas of improvement, and how balanced or productive the routine appears:\n\n{routine}"
         try:
             response = self.model.generate_content(prompt)
             return response.text
