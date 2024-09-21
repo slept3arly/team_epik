@@ -226,7 +226,6 @@ def main():
     with tab3:
         st.header("Overview")
         # Generate and display RAG insights
-        st.subheader("Summary")
         rag_insights = st.session_state.lumi.get_rag_insights()
         st.write(rag_insights)
 
