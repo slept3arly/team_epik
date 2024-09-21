@@ -60,12 +60,13 @@ class AdvancedLumi:
             return f"Error generating brief analysis: {e}"
 
     def get_detailed_routine_analysis(self, routine):
-        prompt = f"Analyze the following daily routine and provide detailed insights on productivity, time management, and energy levels. Also, give specific recommendations for improvement:\n\n{routine}"
+        prompt = f"Provide a detailed analysis of the following daily routine, highlighting key differences and offering a more optimized routine. Focus on improving time management, productivity, balance, and well-being while explaining the benefits of each change:\n\n{routine}"
         try:
             response = self.model.generate_content(prompt)
             return response.text
         except Exception as e:
             return f"Error generating detailed analysis: {e}"
+
 
 def main():
     st.title("Lumi: Habit Tracker and Daily Routine Analyzer")
