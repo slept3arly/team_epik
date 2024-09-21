@@ -11,7 +11,7 @@ GEMINI_API_KEY = "AIzaSyBnQi3e0zl453OoH5s67luF00DwaN5tzv8"  # Replace with your 
 class AdvancedLumi:
     def __init__(self):
         self.habits_data = pd.DataFrame(columns=['habit', 'frequency', 'completion_rate', 'last_completed'])
-        self.analysis_data = pd.DataFrame(columns=['date', 'routine', 'brief_analysis'])
+        self.analysis_data = pd.DataFrame(columns=['date', 'routine', 'brief_analysis', 'rating'])
         self.load_data()
         
         # Initialize Gemini API
@@ -31,7 +31,7 @@ class AdvancedLumi:
             self.analysis_data['date'] = pd.to_datetime(self.analysis_data['date'])
         except FileNotFoundError:
             st.warning("No existing analysis data found. Starting with an empty dataset.")
-            self.analysis_data = pd.DataFrame(columns=['date', 'routine', 'brief_analysis'])
+            self.analysis_data = pd.DataFrame(columns=['date', 'routine', 'brief_analysis', 'rating'])
 
     def save_data(self):
         self.habits_data.to_csv('habits.csv', index=False)
@@ -62,16 +62,33 @@ class AdvancedLumi:
         return "Habit not found."
 
     def get_brief_routine_analysis(self, routine):
-        prompt = f"Hey there, AI! I've got a daily routine I'd like you to analyze. Can you give me a brief, two-sentence summary with a few pointers of my routine and offer any suggestions for improvement in 2 different headings one of summary and one of suggestions?:\n\n{routine}"
+        prompt = f"""Analyze this daily routine and provide:
+        1. A brief, two-sentence summary with a few pointers
+        2. Suggestions for improvement
+        3. A rating out of 10 for the overall quality of the routine (provide only the number)
+
+        Routine:
+        {routine}
+
+        Format your response as follows:
+        Summary: [Your two-sentence summary]
+        Suggestions: [Your suggestions]
+        Rating: [Your rating out of 10, only the number]
+        """
         try:
             response = self.model.generate_content(prompt)
             analysis = response.text
+            
+            # Extract rating from the analysis
+            rating_line = [line for line in analysis.split('\n') if line.startswith('Rating:')]
+            rating = float(rating_line[0].split(':')[1].strip()) if rating_line else 5.0  # Default to 5 if not found
             
             # Save the analysis to the DataFrame
             new_analysis = pd.DataFrame({
                 'date': [datetime.now()],
                 'routine': [routine],
-                'brief_analysis': [analysis]
+                'brief_analysis': [analysis],
+                'rating': [rating]
             })
             self.analysis_data = pd.concat([self.analysis_data, new_analysis], ignore_index=True)
             self.save_data()
@@ -114,25 +131,37 @@ class AdvancedLumi:
         except Exception as e:
             return f"Error generating RAG insights: {e}"
 
-def create_habit_completion_chart(habits_data):
+def create_habit_frequency_chart(habits_data):
+    # Count the number of times each habit was completed in the last 7 days
+    seven_days_ago = datetime.now() - timedelta(days=7)
+    recent_habits = habits_data[habits_data['last_completed'] >= seven_days_ago]
+    habit_counts = recent_habits['habit'].value_counts()
+
     plt.figure(figsize=(10, 6))
-    sns.barplot(x='habit', y='completion_rate', data=habits_data)
-    plt.title('Habit Completion Rates')
+    sns.barplot(x=habit_counts.index, y=habit_counts.values)
+    plt.title('Habit Frequency (Last 7 Days)')
     plt.xlabel('Habits')
-    plt.ylabel('Completion Rate (%)')
+    plt.ylabel('Frequency')
     plt.xticks(rotation=45, ha='right')
     return plt
 
-def create_routine_analysis_chart(analysis_data):
-    analysis_data['word_count'] = analysis_data['brief_analysis'].apply(lambda x: len(x.split()))
+def create_routine_rating_chart(analysis_data):
+    # Get the ratings for the last 7 days
+    seven_days_ago = datetime.now() - timedelta(days=7)
+    recent_analyses = analysis_data[analysis_data['date'] >= seven_days_ago]
+    
+    if recent_analyses.empty or 'rating' not in recent_analyses.columns:
+        st.warning("Not enough data to create the routine rating chart.")
+        return None
+
     plt.figure(figsize=(10, 6))
-    sns.lineplot(x='date', y='word_count', data=analysis_data)
-    plt.title('Routine Analysis Complexity Over Time')
+    sns.lineplot(x='date', y='rating', data=recent_analyses)
+    plt.title('Routine Ratings (Last 7 Days)')
     plt.xlabel('Date')
-    plt.ylabel('Word Count')
+    plt.ylabel('Rating (out of 10)')
+    plt.ylim(0, 10)
     plt.xticks(rotation=45, ha='right')
     return plt
-
 def main():
     st.title("Lumi: Habit Tracker and Daily Routine Analyzer")
 
@@ -147,7 +176,7 @@ def main():
         st.session_state.detailed_analysis = ""
 
     # Create tabs
-    tab1, tab2, tab3, tab4 = st.tabs(["Habit Tracking", "Daily Routine Analysis", "Analysis History", "RAG Insights"])
+    tab1, tab2, tab3 = st.tabs(["Habit Tracking", "Daily Routine Analysis", "Overview"])
 
     with tab1:
         st.header("Habit Tracking")
@@ -173,10 +202,6 @@ def main():
             result = st.session_state.lumi.update_habit_completion(update_habit, completed_habit)
             st.success(result)
 
-        # Display habits
-        st.subheader("Your Habits")
-        st.dataframe(st.session_state.lumi.habits_data)
-
     with tab2:
         st.header("Daily Routine Analysis")
         
@@ -199,28 +224,22 @@ def main():
             st.write(st.session_state.detailed_analysis)
 
     with tab3:
-        st.header("Analysis History")
-        if not st.session_state.lumi.analysis_data.empty:
-            st.dataframe(st.session_state.lumi.analysis_data.sort_values(by='date', ascending=False))
-        else:
-            st.write("No analysis history available yet.")
-
-    with tab4:
-        st.header("RAG Insights")
-        
-        # Generate RAG insights
+        st.header("Overview")
+        # Generate and display RAG insights
+        st.subheader("Summary")
         rag_insights = st.session_state.lumi.get_rag_insights()
         st.write(rag_insights)
 
-        # Create and display habit completion chart
-        st.subheader("Habit Completion Rates")
-        habit_chart = create_habit_completion_chart(st.session_state.lumi.habits_data)
+        # Create and display habit frequency chart
+        st.subheader("Habit Frequency (Last 7 Days)")
+        habit_chart = create_habit_frequency_chart(st.session_state.lumi.habits_data)
         st.pyplot(habit_chart)
 
-        # Create and display routine analysis chart
-        st.subheader("Routine Analysis Complexity Over Time")
-        routine_chart = create_routine_analysis_chart(st.session_state.lumi.analysis_data)
-        st.pyplot(routine_chart)
+        # Create and display routine rating chart
+        st.subheader("Routine Ratings (Last 7 Days)")
+        routine_chart = create_routine_rating_chart(st.session_state.lumi.analysis_data)
+        if routine_chart:
+            st.pyplot(routine_chart)
 
 if __name__ == "__main__":
     main()
