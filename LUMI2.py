@@ -18,9 +18,8 @@ class AdvancedLumi:
 
     def load_data(self):
         try:
-            loaded_data = pd.read_csv('habits.csv')
-            loaded_data['last_completed'] = pd.to_datetime(loaded_data['last_completed'])
-            self.habits_data = loaded_data
+            self.habits_data = pd.read_csv('habits.csv')
+            self.habits_data['last_completed'] = pd.to_datetime(self.habits_data['last_completed'])
         except FileNotFoundError:
             st.warning("No existing habits data found. Starting with an empty dataset.")
             self.habits_data = pd.DataFrame(columns=['habit', 'frequency', 'completion_rate', 'last_completed'])
@@ -61,31 +60,31 @@ class AdvancedLumi:
         return "Habit not found."
 
     def get_brief_routine_analysis(self, routine):
-        prompt = f"Provide a brief, one-sentence analysis of the following daily routine:\n\n{routine}"
+        prompt = f"Hey there, AI! I've got a daily routine I'd like you to analyze. Can you give me a brief, two-sentence summary with a few pointers of my routine and offer any suggestions for improvement in 2 different headings one of summary and one of suggestions?:\n\n{routine}"
         try:
             response = self.model.generate_content(prompt)
             analysis = response.text
-            self.save_analysis(routine, analysis)
+            
+            # Save the analysis to the DataFrame
+            new_analysis = pd.DataFrame({
+                'date': [datetime.now()],
+                'routine': [routine],
+                'brief_analysis': [analysis]
+            })
+            self.analysis_data = pd.concat([self.analysis_data, new_analysis], ignore_index=True)
+            self.save_data()
+            
             return analysis
         except Exception as e:
             return f"Error generating brief analysis: {e}"
 
     def get_detailed_routine_analysis(self, routine):
-        prompt = f"Analyze the following daily routine and provide detailed insights on productivity, time management, and energy levels. Also, give specific recommendations for improvement:\n\n{routine}"
+        prompt = f"Hey there, AI! I've got a daily routine I'd like you to analyze in detail. Can you provide a point-by-point breakdown of my routine, highlighting any potential areas for improvement or optimization?:\n\n{routine}"
         try:
             response = self.model.generate_content(prompt)
             return response.text
         except Exception as e:
             return f"Error generating detailed analysis: {e}"
-
-    def save_analysis(self, routine, analysis):
-        new_analysis = pd.DataFrame({
-            'date': [datetime.now()],
-            'routine': [routine],
-            'brief_analysis': [analysis]
-        })
-        self.analysis_data = pd.concat([self.analysis_data, new_analysis], ignore_index=True)
-        self.save_data()
 
 def main():
     st.title("Lumi: Habit Tracker and Daily Routine Analyzer")
@@ -101,7 +100,7 @@ def main():
         st.session_state.detailed_analysis = ""
 
     # Create tabs
-    tab1, tab2 = st.tabs(["Habit Tracking", "Daily Routine Analysis"])
+    tab1, tab2, tab3 = st.tabs(["Habit Tracking", "Daily Routine Analysis", "Analysis History"])
 
     with tab1:
         st.header("Habit Tracking")
@@ -135,27 +134,29 @@ def main():
         st.header("Daily Routine Analysis")
         
         with st.form("routine_analysis_form"):
-            daily_routine = st.text_area("Enter your daily routine:", value=st.session_state.daily_routine)
-            analyze_routine_submitted = st.form_submit_button("Analyze Routine")
-            show_detailed_analysis = st.form_submit_button("Show Detailed Analysis")
-
+            daily_routine = st.text_area("Enter your daily routine:")
+            analyze_routine_submitted = st.form_submit_button("Analyze My Routine")
+            show_detailed_analysis = st.form_submit_button("Propose a Better Plan")
+        
         if analyze_routine_submitted and daily_routine:
             st.session_state.daily_routine = daily_routine
             st.session_state.brief_analysis = st.session_state.lumi.get_brief_routine_analysis(daily_routine)
-
-        if st.session_state.brief_analysis:
+            st.session_state.detailed_analysis = ""  # Reset detailed analysis
             st.subheader("Brief Analysis")
             st.write(st.session_state.brief_analysis)
 
         if show_detailed_analysis:
             if not st.session_state.detailed_analysis:
                 st.session_state.detailed_analysis = st.session_state.lumi.get_detailed_routine_analysis(st.session_state.daily_routine)
-            st.subheader("Detailed Analysis")
+            st.subheader("Better Plan")
             st.write(st.session_state.detailed_analysis)
 
-        # Display saved analyses
-        st.subheader("Previous Analyses")
-        st.dataframe(st.session_state.lumi.analysis_data)
+    with tab3:
+        st.header("Analysis History")
+        if not st.session_state.lumi.analysis_data.empty:
+            st.dataframe(st.session_state.lumi.analysis_data.sort_values(by='date', ascending=False))
+        else:
+            st.write("No analysis history available yet.")
 
 if __name__ == "__main__":
     main()
