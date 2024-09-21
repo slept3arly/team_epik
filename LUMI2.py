@@ -118,6 +118,12 @@ def main():
             daily_routine = st.text_area("Enter your daily routine:")
             analyze_routine_submitted = st.form_submit_button("Analyze My Routine")
             show_detailed_analysis = st.form_submit_button("Propose a Better Plan")
+        
+        if analyze_routine_submitted and daily_routine:
+            st.session_state.daily_routine = daily_routine
+            st.session_state.brief_analysis = st.session_state.lumi.get_brief_routine_analysis(daily_routine)
+            st.session_state.detailed_analysis = ""  # Reset detailed analysis
+
 
         if analyze_routine_submitted and daily_routine:
             brief_analysis = st.session_state.lumi.get_brief_routine_analysis(daily_routine)
