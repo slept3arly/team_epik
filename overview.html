@@ -38,8 +38,23 @@
                 <li class="nav-item">
                     <a class="nav-link" href="/routine_analysis">Routine Analysis</a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/goals">Goals</a>
+                </li>
                 <li class="nav-item active">
                     <a class="nav-link" href="/overview">Overview</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/stress_management">Stress Management</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/productivity">Productivity</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/health_wellness">Health & Wellness</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/community">Community</a>
                 </li>
             </ul>
         </div>
@@ -50,23 +65,33 @@
             <h1 class="mb-4">Overview</h1>
         </div>
         
-        <div class="content-box">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="content-box">
+                    <h2>Habit Frequency (Last 7 Days)</h2>
+                    {% if habit_chart %}
+                        <img src="data:image/png;base64,{{ habit_chart }}" alt="Habit Frequency Chart" class="img-fluid">
+                    {% else %}
+                        <p>No habit data available for the last 7 days.</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="content-box">
+                    <h2>Routine Ratings (Last 7 Days)</h2>
+                    {% if routine_chart %}
+                        <img src="data:image/png;base64,{{ routine_chart }}" alt="Routine Ratings Chart" class="img-fluid">
+                    {% else %}
+                        <p>No routine rating data available for the last 7 days.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="content-box mt-4">
             <h2>RAG Insights</h2>
             <pre>{{ rag_insights }}</pre>
-        </div>
-        
-        <div class="content-box">
-            <h2>Habit Frequency (Last 7 Days)</h2>
-            <img src="data:image/png;base64,{{ habit_chart }}" alt="Habit Frequency Chart" class="img-fluid">
-        </div>
-        
-        <div class="content-box">
-            <h2>Routine Ratings (Last 7 Days)</h2>
-            {% if routine_chart %}
-                <img src="data:image/png;base64,{{ routine_chart }}" alt="Routine Rating Chart" class="img-fluid">
-            {% else %}
-                <p>No routine ratings data available for the last 7 days.</p>
-            {% endif %}
         </div>
     </div>
 

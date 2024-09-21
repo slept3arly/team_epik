@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health & Wellness - Lumi</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            padding-top: 60px;
+            font-family: 'Google Sans', sans-serif;
+        }
+        .content-box {
+            background-color: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
+        <a class="navbar-brand" href="/">Lumi</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link" href="/habit_tracking">Habit Tracking</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/routine_analysis">Routine Analysis</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/goals">Goals</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/overview">Overview</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/stress_management">Stress Management</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/productivity">Productivity</a>
+                </li>
+                <li class="nav-item active">
+                    <a class="nav-link" href="/health_wellness">Health & Wellness</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/community">Community</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="content-box">
+            <h1 class="mb-4">Health & Wellness</h1>
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-info">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="content-box">
+                    <h2>Log Nutrition</h2>
+                    <form method="POST">
+                        <div class="form-group">
+                            <label for="meal">Meal:</label>
+                            <input type="text" class="form-control" id="meal" name="meal" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="calories">Calories:</label>
+                            <input type="number" class="form-control" id="calories" name="calories" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary" name="log_nutrition">Log Nutrition</button>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="content-box">
+                    <h2>Log Sleep</h2>
+                    <form method="POST">
+                        <div class="form-group">
+                            <label for="sleep_duration">Sleep Duration (hours):</label>
+                            <input type="number" step="0.1" class="form-control" id="sleep_duration" name="sleep_duration" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="sleep_quality">Sleep Quality (1-10):</label>
+                            <input type="number" class="form-control" id="sleep_quality" name="sleep_quality" min="1" max="10" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary" name="log_sleep">Log Sleep</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="content-box mt-4">
+            <h2>Nutrition Log (Last 7 Days)</h2>
+            {% if nutrition_chart %}
+                <img src="data:image/png;base64,{{ nutrition_chart }}" alt="Nutrition Chart" class="img-fluid">
+            {% else %}
+                <p>No nutrition data available for the last 7 days.</p>
+            {% endif %}
+        </div>
+        
+        <div class="content-box mt-4">
+            <h2>Sleep Log (Last 7 Days)</h2>
+            {% if sleep_chart %}
+                <img src="data:image/png;base64,{{ sleep_chart }}" alt="Sleep Chart" class="img-fluid">
+            {% else %}
+                <p>No sleep data available for the last 7 days.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

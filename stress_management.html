@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Routine Analysis - Lumi</title>
+    <title>Stress Management - Lumi</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;700&display=swap" rel="stylesheet">
     <style>
@@ -18,10 +18,6 @@
             margin-bottom: 20px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
-        pre {
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
     </style>
 </head>
 <body>
@@ -35,7 +31,7 @@
                 <li class="nav-item">
                     <a class="nav-link" href="/habit_tracking">Habit Tracking</a>
                 </li>
-                <li class="nav-item active">
+                <li class="nav-item">
                     <a class="nav-link" href="/routine_analysis">Routine Analysis</a>
                 </li>
                 <li class="nav-item">
@@ -44,7 +40,7 @@
                 <li class="nav-item">
                     <a class="nav-link" href="/overview">Overview</a>
                 </li>
-                <li class="nav-item">
+                <li class="nav-item active">
                     <a class="nav-link" href="/stress_management">Stress Management</a>
                 </li>
                 <li class="nav-item">
@@ -62,30 +58,51 @@
 
     <div class="container mt-4">
         <div class="content-box">
-            <h1 class="mb-4">Daily Routine Analysis</h1>
-            <form method="POST">
-                <div class="form-group">
-                    <label for="routine">Enter your daily routine:</label>
-                    <textarea class="form-control" id="routine" name="routine" rows="5" required></textarea>
-                </div>
-                <button type="submit" class="btn btn-primary mr-2" name="analyze_routine">Analyze My Routine</button>
-                <button type="submit" class="btn btn-secondary" name="detailed_analysis">Propose a Better Plan</button>
-            </form>
+            <h1 class="mb-4">Stress Management</h1>
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-info">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
         </div>
-
-        {% if brief_analysis %}
-            <div class="content-box">
-                <h2 class="mt-4">Brief Analysis</h2>
-                <pre>{{ brief_analysis }}</pre>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="content-box">
+                    <h2>Log Stress Level</h2>
+                    <form method="POST">
+                        <div class="form-group">
+                            <label for="stress_level">Stress Level (1-10):</label>
+                            <input type="number" class="form-control" id="stress_level" name="stress_level" min="1" max="10" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Log Stress Level</button>
+                    </form>
+                </div>
             </div>
-        {% endif %}
-
-        {% if detailed_analysis %}
-            <div class="content-box">
-                <h2 class="mt-4">Better Plan</h2>
-                <pre>{{ detailed_analysis }}</pre>
+            
+            <div class="col-md-6">
+                <div class="content-box">
+                    <h2>Meditation Recommendation</h2>
+                    <h3>{{ meditation.title }}</h3>
+                    <p>Duration: {{ meditation.duration }}</p>
+                    <audio controls>
+                        <source src="{{ meditation.audio }}" type="audio/mpeg">
+                        Your browser does not support the audio element.
+                    </audio>
+                </div>
             </div>
-        {% endif %}
+        </div>
+        
+        <div class="content-box mt-4">
+            <h2>Stress Levels (Last 7 Days)</h2>
+            {% if stress_chart %}
+                <img src="data:image/png;base64,{{ stress_chart }}" alt="Stress Levels Chart" class="img-fluid">
+            {% else %}
+                <p>No stress level data available for the last 7 days.</p>
+            {% endif %}
+        </div>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
