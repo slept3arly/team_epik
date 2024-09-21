@@ -52,7 +52,7 @@ class AdvancedLumi:
         return "Habit not found."
 
     def get_brief_routine_analysis(self, routine):
-        prompt = f"Provide a brief, two-sentence analysis of the following daily routine:\n\n{routine}"
+        prompt = f"Hey there, AI! I've got a daily routine I'd like you to analyze. Can you give me a brief, two-sentence summary with a few pointers of my routine and offer any suggestions for improvement in 2 different headings one of summary and one of suggestions?:\n\n{routine}"
         try:
             response = self.model.generate_content(prompt)
             return response.text
@@ -60,7 +60,7 @@ class AdvancedLumi:
             return f"Error generating brief analysis: {e}"
 
     def get_detailed_routine_analysis(self, routine):
-        prompt = f"Propose a better daily routine, highlighting the key differences and benefits:\n\n{routine}"
+        prompt = f"Hey there, AI! I've got a daily routine I'd like you to analyze in detail. Can you provide a point-by-point breakdown of my routine, highlighting any potential areas for improvement or optimization?:\n\n{routine}"
         try:
             response = self.model.generate_content(prompt)
             return response.text
@@ -117,7 +117,7 @@ def main():
         with st.form("routine_analysis_form"):
             daily_routine = st.text_area("Enter your daily routine:")
             analyze_routine_submitted = st.form_submit_button("Analyze My Routine")
-            show_detailed_analysis = st.form_submit_button("Show Detailed Analysis")
+            show_detailed_analysis = st.form_submit_button("Propose a Better Plan")
 
         if analyze_routine_submitted and daily_routine:
             brief_analysis = st.session_state.lumi.get_brief_routine_analysis(daily_routine)
@@ -127,7 +127,7 @@ def main():
         if show_detailed_analysis:
             if not st.session_state.detailed_analysis:
                 st.session_state.detailed_analysis = st.session_state.lumi.get_detailed_routine_analysis(st.session_state.daily_routine)
-            st.subheader("Detailed Analysis")
+            st.subheader("Better Plan")
             st.write(st.session_state.detailed_analysis)
 
 if __name__ == "__main__":
