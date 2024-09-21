@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Habit Tracking - Lumi</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            padding-top: 60px;
+            font-family: 'Google Sans', sans-serif;
+        }
+        .content-box {
+            background-color: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
+        <a class="navbar-brand" href="/">Lumi</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav">
+                <li class="nav-item active">
+                    <a class="nav-link" href="/habit_tracking">Habit Tracking</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/routine_analysis">Routine Analysis</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/overview">Overview</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="content-box">
+            <h1 class="mb-4">Habit Tracking</h1>
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-info">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="content-box">
+                    <h2>Add New Habit</h2>
+                    <form method="POST" class="mb-4">
+                        <div class="form-group">
+                            <label for="habit">Habit Name:</label>
+                            <input type="text" class="form-control" id="habit" name="habit" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="frequency">Daily Frequency:</label>
+                            <input type="number" class="form-control" id="frequency" name="frequency" min="1" value="1" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary" name="add_habit">Add Habit</button>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="content-box">
+                    <h2>Update Existing Habit</h2>
+                    <form method="POST">
+                        <div class="form-group">
+                            <label for="habit_update">Select Habit:</label>
+                            <select class="form-control" id="habit_update" name="habit" required>
+                                <option value="">Choose a habit</option>
+                                {% for habit in habits %}
+                                    <option value="{{ habit }}">{{ habit }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input type="checkbox" class="form-check-input" id="completed" name="completed">
+                            <label class="form-check-label" for="completed">Completed today?</label>
+                        </div>
+                        <button type="submit" class="btn btn-primary" name="update_habit">Update Habit</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
