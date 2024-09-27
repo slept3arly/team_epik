@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import google.generativeai as genai
 import random
 
-GEMINI_API_KEY = "AIzaSyBnQi3e0zl453OoH5s67luF00DwaN5tzv8"  # Replace with your actual Gemini API key
+GEMINI_API_KEY = ""  # Replace with your actual Gemini API key
 class AdvancedLumi:
     def __init__(self):
         self.conn = sqlite3.connect('lumi_data.db', check_same_thread=False)
