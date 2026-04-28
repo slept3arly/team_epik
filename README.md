@@ -1,30 +1,56 @@
 # Lumi
 
-Lumi is a Flask + SQLite habit and routine tracker with dashboard views for habits, goals, productivity, stress, nutrition, sleep, and a small community feed.
+Lumi is a prototype Flask and SQLite web application for tracking habits, routines, goals, productivity, stress, nutrition, sleep, and community updates in one dashboard. It includes optional Gemini-powered routine analysis with a local fallback when the API is unavailable.
 
-## What this refactor changed
+## Features
 
-- Replaced the duplicated root-level HTML with a shared `templates/` layout.
-- Moved styling into `static/css/main.css`.
-- Moved login UI behavior into `static/js/main.js`.
-- Replaced the monolithic backend with a thin Flask route layer plus reusable service modules.
-- Added input validation, CSRF protection, password hashing, session-based login, and optional Gemini-backed routine analysis with a fallback when the API is unavailable.
+- User sign-up and login with session-based authentication
+- Habit tracking with completion logging and frequency summaries
+- Routine analysis with brief and detailed feedback modes
+- Goal tracking with category, date range, and progress updates
+- Productivity task tracking with priority and due dates
+- Stress logging with trend charts and meditation suggestions
+- Nutrition and sleep logging with visual summaries
+- Lightweight community feed for posting updates and reading recent entries
+- Dashboard and overview pages with embedded charts rendered as PNG images
 
-## Run It
+## Tech Stack
 
-1. Install dependencies:
+- Python
+- Flask
+- SQLite
+- Jinja2 templates
+- Bootstrap 4
+- Matplotlib
+- Seaborn
+- Google GenAI API via `google-genai` for optional routine analysis
+
+## Project Structure
+
+- `flask_app.py` Flask application, routes, authentication, and request handling
+- `services/` domain logic, SQLite persistence, validation, and chart generation
+- `templates/` shared layout and page templates
+- `static/css/` application styling
+- `static/js/` client-side login and sign-up behavior
+- `instance/` runtime SQLite database created locally
+- `Lumi_v6.0.py` and `advance_lumi.py` compatibility shims for the service layer
+
+## How to Run Locally
+
+1. Create and activate a Python virtual environment.
+2. Install dependencies:
 
 ```bash
 pip install flask matplotlib seaborn google-genai werkzeug
 ```
 
-2. Create a `.env` file from the example:
+3. Copy the example environment file:
 
 ```bash
 cp .env.example .env
 ```
 
-3. Put your values into `.env`:
+4. Set the required values in `.env`:
 
 ```bash
 FLASK_SECRET_KEY=your-random-secret
@@ -32,33 +58,38 @@ GEMINI_API_KEY=your-gemini-api-key
 GEMINI_MODEL=gemini-3-flash-preview
 ```
 
-Use plain ASCII quotes only if you quote values. Do not paste curly quotes.
-If you prefer, you can also use `GOOGLE_API_KEY` or `GOOGLE_GENAI_API_KEY` instead of `GEMINI_API_KEY`.
-
-4. Start the app:
+5. Start the application:
 
 ```bash
 python3 flask_app.py
 ```
 
-Open `http://127.0.0.1:5000`.
+6. Open `http://127.0.0.1:5000`.
 
-## Folder Structure
+If you do not provide a Gemini API key, routine analysis still works through the built-in fallback logic.
 
-- `flask_app.py` Flask routes, CSRF, login/signup, and page orchestration
-- `services/` validation, charts, and database/domain logic
-- `templates/` shared base layout and page templates
-- `static/css/` global styles
-- `static/js/` login/signup behavior
-- `instance/` local SQLite database created at runtime
+## Key Technical Concepts
 
-## Notes
+- Session-based auth with password hashing via Werkzeug
+- CSRF protection for form submissions
+- Input validation and normalization before database writes
+- SQLite schema initialization at startup
+- Optional AI integration with retry and deterministic fallback
+- Server-generated charts encoded directly into templates
 
-- `advance_lumi.py` and `Lumi_v6.0.py` are compatibility shims that point to the new service layer.
-- If `GEMINI_API_KEY` is not set, routine analysis falls back to a deterministic local summary so the app still works.
-- The Gemini integration now uses the supported `google-genai` package instead of the deprecated `google-generativeai` package.
-- If you get a 400 from Gemini, try `GEMINI_MODEL=gemini-3-flash-preview` in `.env`; the app also retries that model automatically before falling back.
-- If the service still says the key is missing, check for curly quotes in `.env` and restart the server after editing the file.
-- The local `.env` file overrides inherited shell variables on startup.
-- Passwords are stored as hashes, not plain text.
-- The app loads `.env` automatically if it exists in the project root.
+## Limitations
+
+- This is a prototype, not a production-ready product.
+- Data is stored locally in SQLite with no migration layer.
+- There is no password reset, email verification, or role-based access control.
+- Community posts are lightweight and not moderated.
+- Meditation links are placeholder URLs rather than production media.
+- The app currently supports create/update flows, but not full edit/delete management for every data type.
+
+## Future Improvements
+
+- Add edit and delete actions across all tracked entities
+- Introduce database migrations and a production-ready deployment path
+- Add moderation, search, and filtering for community content
+- Replace placeholder meditation resources with maintained content
+- Add export/reporting features for personal tracking data
