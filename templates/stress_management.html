@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% import "macros.html" as ui %}
+{% block title %}Stress Management · Lumi{% endblock %}
+{% block content %}
+  <section class="page-header">
+    <div class="page-kicker">Recovery</div>
+    <h1 class="page-title">Stress management</h1>
+    <p class="page-subtitle mb-0">Log a stress level and keep the recent trend visible.</p>
+  </section>
+
+  <div class="row">
+    <div class="col-lg-5 mb-4">
+      <div class="content-card h-100">
+        <h2 class="section-title">Log stress</h2>
+        <form method="post" class="mt-3">
+          {{ ui.csrf_input() }}
+          <div class="form-group">
+            <label class="form-label" for="stress_level">Stress level</label>
+            <input class="form-control" id="stress_level" name="stress_level" type="number" min="1" max="10" required>
+          </div>
+          <button type="submit" class="btn btn-primary">Save log</button>
+        </form>
+      </div>
+    </div>
+    <div class="col-lg-7 mb-4">
+      <div class="content-card h-100">
+        <h2 class="section-title">Meditation recommendation</h2>
+        <div class="post-card mt-3">
+          <div class="small text-muted mb-1">Suggested session</div>
+          <h5>{{ meditation.title }}</h5>
+          <p class="mb-2 muted-copy">Duration: {{ meditation.duration }}</p>
+          <a class="btn btn-soft btn-sm" href="{{ meditation.audio }}" target="_blank" rel="noopener noreferrer">Open audio link</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="content-card mb-4">
+    <h2 class="section-title">Stress trend</h2>
+    {% if stress_chart %}
+      <img src="data:image/png;base64,{{ stress_chart }}" alt="Stress chart" class="img-fluid mt-3">
+    {% else %}
+      <div class="empty-state mt-3">No stress data for the last week.</div>
+    {% endif %}
+  </section>
+
+  <section class="table-card">
+    <h2 class="section-title">Recent stress logs</h2>
+    {% if stress_levels %}
+      <div class="table-responsive mt-3">
+        <table class="table soft-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Stress level</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in stress_levels %}
+              <tr>
+                <td>{{ item.created_at[:10] }}</td>
+                <td>{{ item.stress_level }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state mt-3">No stress logs yet.</div>
+    {% endif %}
+  </section>
+{% endblock %}
+

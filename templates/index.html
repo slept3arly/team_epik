@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Lumi Dashboard{% endblock %}
+{% block content %}
+  <section class="page-header">
+    <div class="row align-items-center">
+      <div class="col-lg-8">
+        <div class="page-kicker">Lifestyle command center</div>
+        <h1 class="page-title">Track habits, review routines, and stay on top of your day.</h1>
+        <p class="page-subtitle mb-0">A compact dashboard for routines, goals, stress, productivity, and wellness.</p>
+      </div>
+      <div class="col-lg-4 mt-4 mt-lg-0">
+        <div class="hero-card">
+          <div class="p-3">
+            <h5 class="mb-2">At a glance</h5>
+            {% if overview_summary %}
+              <ul class="list-unstyled mb-0">
+                {% for item in overview_summary %}
+                  <li class="mb-2">• {{ item }}</li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <p class="muted-copy mb-0">Add some data to unlock your overview.</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mb-4">
+    <div class="metric-grid">
+      <div class="metric-card">
+        <span class="text-muted small">Best for</span>
+        <strong>Routine clarity</strong>
+        <p class="mb-0 muted-copy">Analyze your day and spot what is helping or hurting your momentum.</p>
+      </div>
+      <div class="metric-card">
+        <span class="text-muted small">Best for</span>
+        <strong>Habit tracking</strong>
+        <p class="mb-0 muted-copy">Mark completions, monitor frequency, and keep feedback in one place.</p>
+      </div>
+      <div class="metric-card">
+        <span class="text-muted small">Best for</span>
+        <strong>Goals & tasks</strong>
+        <p class="mb-0 muted-copy">Keep deadlines visible and update progress without jumping between tools.</p>
+      </div>
+      <div class="metric-card">
+        <span class="text-muted small">Best for</span>
+        <strong>Wellness</strong>
+        <p class="mb-0 muted-copy">Track stress, sleep, and nutrition so the rest of the system stays grounded.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="row">
+    <div class="col-lg-8 mb-4">
+      <div class="content-card">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2 class="section-title mb-0">Quick actions</h2>
+          <a class="btn btn-soft btn-sm" href="{{ url_for('overview') }}">View charts</a>
+        </div>
+        <div class="feature-grid">
+          <a class="feature-card text-decoration-none" href="{{ url_for('habit_tracking') }}">
+            <div class="feature-icon">H</div>
+            <h5>Habit tracking</h5>
+            <p class="mb-0 muted-copy">Record habit completions and keep daily consistency visible.</p>
+          </a>
+          <a class="feature-card text-decoration-none" href="{{ url_for('routine_analysis') }}">
+            <div class="feature-icon">A</div>
+            <h5>Routine analysis</h5>
+            <p class="mb-0 muted-copy">Get a concise AI-style summary plus practical improvement tips.</p>
+          </a>
+          <a class="feature-card text-decoration-none" href="{{ url_for('goals') }}">
+            <div class="feature-icon">G</div>
+            <h5>Goals</h5>
+            <p class="mb-0 muted-copy">Create goals, track progress, and keep deadlines in sight.</p>
+          </a>
+          <a class="feature-card text-decoration-none" href="{{ url_for('community') }}">
+            <div class="feature-icon">C</div>
+            <h5>Community</h5>
+            <p class="mb-0 muted-copy">Share posts and browse a lightweight peer support feed.</p>
+          </a>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-4 mb-4">
+      <div class="content-card h-100">
+        <h2 class="section-title">Latest analysis</h2>
+        {% if recent_analyses %}
+          {% for item in recent_analyses %}
+            <div class="analysis-card mb-3">
+              <div class="small text-muted mb-1">{{ item.analysis_kind|capitalize }} analysis · {{ item.created_at[:10] }}</div>
+              <p class="mb-1">{{ item.analysis_text[:220] }}{% if item.analysis_text|length > 220 %}...{% endif %}</p>
+              {% if item.rating %}
+                <div class="small text-muted">Rating: {{ item.rating }}/10</div>
+              {% endif %}
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty-state">Run a routine analysis to see your latest feedback here.</div>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  <section class="content-card">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h2 class="section-title mb-0">Recent community posts</h2>
+      <a class="btn btn-soft btn-sm" href="{{ url_for('community') }}">Open community</a>
+    </div>
+    {% if recent_posts %}
+      <div class="row">
+        {% for post in recent_posts %}
+          <div class="col-md-4 mb-3">
+            <div class="post-card h-100">
+              <div class="small text-muted mb-1">{{ post.category|capitalize }} · {{ post.created_at[:10] }}</div>
+              <h5>{{ post.title }}</h5>
+              <p class="muted-copy mb-2">{{ post.content[:150] }}{% if post.content|length > 150 %}...{% endif %}</p>
+              <div class="small text-muted">by {{ post.author }}</div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">No posts yet. Be the first to share a win, insight, or question.</div>
+    {% endif %}
+  </section>
+{% endblock %}
+

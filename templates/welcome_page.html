@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lumi · Lifestyle Companion</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body class="landing-shell">
+  <header class="landing-nav">
+    <div class="brand">Lumi</div>
+    <div class="d-flex flex-wrap" style="gap: 0.75rem;">
+      <a class="btn btn-soft btn-sm" href="{{ url_for('login') }}">Log in</a>
+      <a class="btn btn-primary btn-sm" href="{{ url_for('index') }}">Open dashboard</a>
+    </div>
+  </header>
+
+  <main class="landing-hero container-fluid">
+    <div class="row align-items-center">
+      <div class="col-lg-6 mb-4 mb-lg-0">
+        <div class="landing-kicker">Habit tracking and routine analysis</div>
+        <h1 class="landing-title">Meet Lumi, a cleaner daily system for habits, goals, and wellness.</h1>
+        <p class="landing-copy">Track what matters, review your routines, and keep momentum without the clutter that usually comes with hackathon-era products.</p>
+        <div class="landing-actions">
+          <a class="btn btn-primary btn-lg" href="{{ url_for('login') }}">Start now</a>
+          <a class="btn btn-soft btn-lg" href="{{ url_for('overview') }}">See overview</a>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="landing-grid">
+          <div class="landing-card">
+            <h3>AI-style routine analysis</h3>
+            <p>Get brief feedback and better-plan suggestions for the way you spend your day.</p>
+          </div>
+          <div class="landing-card">
+            <h3>Habit and goal tracking</h3>
+            <p>Record completions, update progress, and keep an honest picture of your consistency.</p>
+          </div>
+          <div class="landing-card">
+            <h3>Wellness checkpoints</h3>
+            <p>Capture stress, sleep, and nutrition data in the same place you work from.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="landing-footer">
+    Built as a cleaned-up portfolio project with Flask, SQLite, and modular templates.
+  </footer>
+</body>
+</html>
+

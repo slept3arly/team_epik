@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Overview · Lumi{% endblock %}
+{% block content %}
+  <section class="page-header">
+    <div class="page-kicker">Performance overview</div>
+    <h1 class="page-title">Overview</h1>
+    <p class="page-subtitle mb-0">A compact look at habits, routines, and recent insights.</p>
+  </section>
+
+  <section class="metric-grid mb-4">
+    {% for item in overview_summary %}
+      <div class="metric-card">
+        <span class="text-muted small">Snapshot</span>
+        <strong>{{ item }}</strong>
+      </div>
+    {% endfor %}
+  </section>
+
+  <div class="row">
+    <div class="col-lg-6 mb-4">
+      <div class="content-card h-100">
+        <h2 class="section-title">Habit completions</h2>
+        {% if habit_chart %}
+          <img src="data:image/png;base64,{{ habit_chart }}" alt="Habit completions chart" class="img-fluid mt-3">
+        {% else %}
+          <div class="empty-state mt-3">No habit completion data for the last week.</div>
+        {% endif %}
+      </div>
+    </div>
+    <div class="col-lg-6 mb-4">
+      <div class="content-card h-100">
+        <h2 class="section-title">Routine ratings</h2>
+        {% if routine_chart %}
+          <img src="data:image/png;base64,{{ routine_chart }}" alt="Routine ratings chart" class="img-fluid mt-3">
+        {% else %}
+          <div class="empty-state mt-3">No routine analysis ratings for the last week.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <section class="content-card mb-4">
+    <h2 class="section-title">Recent analyses</h2>
+    {% if recent_analyses %}
+      <div class="row mt-3">
+        {% for item in recent_analyses %}
+          <div class="col-md-4 mb-3">
+            <div class="analysis-card h-100">
+              <div class="small text-muted mb-1">{{ item.analysis_kind|capitalize }} · {{ item.created_at[:10] }}</div>
+              <p class="mb-2">{{ item.analysis_text[:180] }}{% if item.analysis_text|length > 180 %}...{% endif %}</p>
+              {% if item.rating %}
+                <div class="small text-muted">Rating: {{ item.rating }}/10</div>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">No recent analyses yet.</div>
+    {% endif %}
+  </section>
+{% endblock %}
+

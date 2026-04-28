@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>Lumi Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body>
+  <div class="auth-shell">
+    <div class="auth-card">
+      <div class="mb-4">
+        <div class="page-kicker">Secure access</div>
+        <h1 class="page-title">Sign in to Lumi</h1>
+        <p class="page-subtitle mb-0">Create an account or log in to keep your data tied to your session.</p>
+      </div>
+
+      <div class="auth-tabs">
+        <button type="button" id="loginTab" class="auth-tab is-active">Log in</button>
+        <button type="button" id="signUpTab" class="auth-tab">Sign up</button>
+      </div>
+
+      <div class="auth-message mb-3" id="authMessage" aria-live="polite"></div>
+
+      <section class="auth-panel is-active" id="loginPanel">
+        <form id="loginForm" class="auth-panel-form">
+          <div class="form-group">
+            <label class="form-label" for="loginIdentity">Username or email</label>
+            <input class="form-control" id="loginIdentity" name="identity" type="text" maxlength="120" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="loginPassword">Password</label>
+            <input class="form-control" id="loginPassword" name="password" type="password" maxlength="256" required>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Log in</button>
+        </form>
+      </section>
+
+      <section class="auth-panel" id="signUpPanel">
+        <form id="signUpForm" class="auth-panel-form">
+          <div class="form-group">
+            <label class="form-label" for="signUpUsername">Username</label>
+            <input class="form-control" id="signUpUsername" name="username" type="text" maxlength="40" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="signUpEmail">Email</label>
+            <input class="form-control" id="signUpEmail" name="email" type="email" maxlength="120" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="signUpPassword">Password</label>
+            <input class="form-control" id="signUpPassword" name="password" type="password" maxlength="256" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="signUpConfirmPassword">Confirm password</label>
+            <input class="form-control" id="signUpConfirmPassword" name="confirm_password" type="password" maxlength="256" required>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Create account</button>
+        </form>
+      </section>
+
+      <div class="d-flex justify-content-between align-items-center mt-4 flex-wrap" style="gap: 0.75rem;">
+        <a class="btn btn-soft" href="{{ url_for('welcome') }}">View landing page</a>
+        <a class="btn btn-primary" href="{{ url_for('index') }}">Open dashboard</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
+

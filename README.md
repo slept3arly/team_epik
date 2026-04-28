@@ -1,66 +1,64 @@
-Lumi: Web-Based Assistant for Habit Tracking and Routine Analysis
-Overview
-Lumi is a Streamlit-based web application that acts as a lifestyle assistant to help you track habits and analyze daily routines. Lumi uses Google's Gemini API for generating insights and analysis, offering both brief and detailed analyses of your routines to help you improve productivity, time management, and overall energy levels. The app also enables you to track your daily habits, monitor completion rates, and save progress over time.
+# Lumi
 
-Features
-Habit Tracking:
+Lumi is a Flask + SQLite habit and routine tracker with dashboard views for habits, goals, productivity, stress, nutrition, sleep, and a small community feed.
 
-Add new habits with daily frequency targets.
-Update the completion status of existing habits.
-Track habit completion rates over time.
-Automatically save and load habit data from CSV files.
-Daily Routine Analysis:
+## What this refactor changed
 
-Input your daily routine to get a brief, AI-generated analysis.
-Get a detailed routine analysis with suggestions for improvement in time management, productivity, and energy levels.
-View previously saved analyses and track your progress over time.
-Technologies Used
-Streamlit: For building the web-based user interface.
-Pandas: For managing and storing data related to habits and routine analysis.
-Google Gemini API: For generating AI-based insights on daily routines.
-CSV: Data is saved and loaded from CSV files to ensure persistence.
-How to Use
-1. Install Dependencies
-Make sure you have Python installed. You will also need to install the following Python packages:
+- Replaced the duplicated root-level HTML with a shared `templates/` layout.
+- Moved styling into `static/css/main.css`.
+- Moved login UI behavior into `static/js/main.js`.
+- Replaced the monolithic backend with a thin Flask route layer plus reusable service modules.
+- Added input validation, CSRF protection, password hashing, session-based login, and optional Gemini-backed routine analysis with a fallback when the API is unavailable.
 
-pip install streamlit pandas google-generativeai
+## Run It
 
-2. Set Up Google Gemini API
-You will need to have access to Google's Gemini API. Replace the GEMINI_API_KEY in the script with your own key:
+1. Install dependencies:
 
-GEMINI_API_KEY = "YOUR_GEMINI_API_KEY"
+```bash
+pip install flask matplotlib seaborn google-genai werkzeug
+```
 
-3. Run the Application
-To run the Lumi application, use the following command in your terminal:
+2. Create a `.env` file from the example:
 
-streamlit run app.py
+```bash
+cp .env.example .env
+```
 
-This will open the Lumi web application in your default browser.
+3. Put your values into `.env`:
 
-4. Habit Tracking Tab
-Add a New Habit: Enter the habit you wish to track along with the desired daily frequency. Lumi will track how often the habit is completed.
-Update a Habit: Select a habit and mark it as completed or incomplete for the day. Lumi will update the completion rate accordingly.
-View Habits: See all your tracked habits and their completion rates in the form of a table.
+```bash
+FLASK_SECRET_KEY=your-random-secret
+GEMINI_API_KEY=your-gemini-api-key
+GEMINI_MODEL=gemini-3-flash-preview
+```
 
-5. Daily Routine Analysis Tab
-Brief Routine Analysis: Input your daily routine as text. Lumi will use the Gemini API to generate a brief analysis based on the routine you provided.
-Detailed Routine Analysis: Optionally, Lumi can provide a more detailed analysis of your routine, offering insights into productivity, time management, and energy levels, along with recommendations.
-Previous Analyses: View a table of previous routine analyses, including dates and insights for each.
+Use plain ASCII quotes only if you quote values. Do not paste curly quotes.
+If you prefer, you can also use `GOOGLE_API_KEY` or `GOOGLE_GENAI_API_KEY` instead of `GEMINI_API_KEY`.
 
-File Storage
-habits.csv: Stores all your tracked habits, including their completion rates and last completed date.
-analysis.csv: Stores your daily routine analyses, including the date, routine details, and AI-generated insights.
+4. Start the app:
 
-Troubleshooting
-Ensure you have set up the Google Gemini API key correctly. If the key is invalid or missing, you may encounter errors when trying to generate routine analyses.
-CSV files must be in the same directory as the application for loading and saving habit and analysis data.
+```bash
+python3 flask_app.py
+```
 
-Future Enhancements
-Reminder System: Add notifications or reminders to help users stay on track with their habits.
-Advanced Insights: Offer additional types of analyses based on the user's preferences or goals.
-Visualizations: Add graphs and charts to represent habit completion and routine improvements over time.
+Open `http://127.0.0.1:5000`.
 
-License
-This project is licensed under the MIT License.
+## Folder Structure
 
-Enjoy improving your habits and routines with Lumi!
+- `flask_app.py` Flask routes, CSRF, login/signup, and page orchestration
+- `services/` validation, charts, and database/domain logic
+- `templates/` shared base layout and page templates
+- `static/css/` global styles
+- `static/js/` login/signup behavior
+- `instance/` local SQLite database created at runtime
+
+## Notes
+
+- `advance_lumi.py` and `Lumi_v6.0.py` are compatibility shims that point to the new service layer.
+- If `GEMINI_API_KEY` is not set, routine analysis falls back to a deterministic local summary so the app still works.
+- The Gemini integration now uses the supported `google-genai` package instead of the deprecated `google-generativeai` package.
+- If you get a 400 from Gemini, try `GEMINI_MODEL=gemini-3-flash-preview` in `.env`; the app also retries that model automatically before falling back.
+- If the service still says the key is missing, check for curly quotes in `.env` and restart the server after editing the file.
+- The local `.env` file overrides inherited shell variables on startup.
+- Passwords are stored as hashes, not plain text.
+- The app loads `.env` automatically if it exists in the project root.

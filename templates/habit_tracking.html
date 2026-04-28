@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% import "macros.html" as ui %}
+{% block title %}Habit Tracking · Lumi{% endblock %}
+{% block content %}
+  <section class="page-header">
+    <div class="page-kicker">Consistency engine</div>
+    <h1 class="page-title">Habit tracking</h1>
+    <p class="page-subtitle mb-0">Add a habit, then mark completions to keep the score honest.</p>
+  </section>
+
+  <div class="row">
+    <div class="col-lg-5 mb-4">
+      <div class="content-card h-100">
+        <h2 class="section-title">Add habit</h2>
+        <form method="post" class="mt-3">
+          {{ ui.csrf_input() }}
+          <div class="form-group">
+            <label class="form-label" for="habit">Habit name</label>
+            <input class="form-control" id="habit" name="habit" type="text" maxlength="80" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="frequency">Daily frequency target</label>
+            <input class="form-control" id="frequency" name="frequency" type="number" min="1" max="12" value="1" required>
+          </div>
+          <button type="submit" class="btn btn-primary" name="add_habit">Add habit</button>
+        </form>
+      </div>
+    </div>
+    <div class="col-lg-7 mb-4">
+      <div class="content-card h-100">
+        <h2 class="section-title">Update habit</h2>
+        <form method="post" class="mt-3">
+          {{ ui.csrf_input() }}
+          <div class="form-group">
+            <label class="form-label" for="habit_update">Select habit</label>
+            <select class="custom-select" id="habit_update" name="habit" required>
+              <option value="">Choose a habit</option>
+              {% for habit in habits %}
+                <option value="{{ habit.habit }}">{{ habit.habit }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group form-check">
+            <input class="form-check-input" type="checkbox" id="completed" name="completed">
+            <label class="form-check-label" for="completed">Completed today</label>
+          </div>
+          <button type="submit" class="btn btn-primary" name="update_habit">Save completion</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <section class="table-card">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h2 class="section-title mb-0">Tracked habits</h2>
+      <span class="text-muted small">{{ habits|length }} total</span>
+    </div>
+    {% if habits %}
+      <div class="table-responsive">
+        <table class="table soft-table">
+          <thead>
+            <tr>
+              <th>Habit</th>
+              <th>Target</th>
+              <th>Completion rate</th>
+              <th>Last completed</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for habit in habits %}
+              <tr>
+                <td>{{ habit.habit }}</td>
+                <td>{{ habit.frequency }}</td>
+                <td>{{ habit.completion_rate|round(1) }}%</td>
+                <td>{{ habit.last_completed or "Not yet" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">No habits yet. Add the first one to begin tracking.</div>
+    {% endif %}
+  </section>
+{% endblock %}
+

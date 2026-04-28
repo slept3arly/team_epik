@@ -1,236 +1,444 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
-from advance_lumi import AdvancedLumi
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-import seaborn as sns
-import io
-import base64
-from datetime import datetime
+from __future__ import annotations
 
-app = Flask(__name__)
-app.secret_key = 'your_secret_key_here'  # Replace with a real secret key
-lumi = AdvancedLumi()
+import os
+import sqlite3
+import secrets
+from pathlib import Path
+from typing import Any
 
-@app.route('/')
+from flask import Flask, abort, flash, g, jsonify, redirect, render_template, request, session, url_for
+
+from services import LumiService
+from services.charts import bar_chart, line_chart, scatter_chart
+from services.validation import clamp_float, clamp_int, parse_bool, parse_choice, parse_date, require_text
+
+
+def load_dotenv_file(path: str = ".env") -> None:
+    env_path = Path(path)
+    if not env_path.exists():
+        return
+
+    quote_chars = "\"'“”‘’"
+    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.lstrip("\ufeff").strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip(quote_chars)
+        if key:
+            # Prefer the repo-local .env file over inherited shell values.
+            os.environ[key] = value
+
+
+load_dotenv_file()
+
+app = Flask(__name__, template_folder="templates", static_folder="static")
+app.secret_key = os.getenv("FLASK_SECRET_KEY") or secrets.token_hex(32)
+app.config["MAX_CONTENT_LENGTH"] = 1 * 1024 * 1024
+
+service = LumiService()
+
+NAV_ITEMS = [
+    ("Dashboard", "index", "/"),
+    ("Habit Tracking", "habit_tracking", "/habit_tracking"),
+    ("Routine Analysis", "routine_analysis", "/routine_analysis"),
+    ("Goals", "goals", "/goals"),
+    ("Overview", "overview", "/overview"),
+    ("Stress Management", "stress_management", "/stress_management"),
+    ("Productivity", "productivity", "/productivity"),
+    ("Health & Wellness", "health_wellness", "/health_wellness"),
+    ("Community", "community", "/community"),
+]
+
+GOAL_CATEGORIES = ("health", "fitness", "productivity", "personal", "other")
+TASK_PRIORITIES = ("high", "medium", "low")
+POST_CATEGORIES = ("habits", "productivity", "wellness", "motivation", "other")
+
+
+def current_user_id() -> int:
+    return int(session.get("user_id") or service.get_guest_user_id())
+
+
+def current_user() -> dict[str, Any]:
+    user = getattr(g, "current_user", None)
+    if user:
+        return user
+    guest = service.get_user_by_id(service.get_guest_user_id())
+    return guest or {"id": service.get_guest_user_id(), "username": "guest"}
+
+
+def render_page(template_name: str, *, active_page: str, **context):
+    return render_template(
+        template_name,
+        active_page=active_page,
+        nav_items=NAV_ITEMS,
+        current_user=current_user(),
+        is_authenticated=session.get("user_id") not in (None, service.get_guest_user_id()),
+        **context,
+    )
+
+
+def csrf_token():
+    token = session.get("_csrf_token")
+    if not token:
+        token = secrets.token_urlsafe(32)
+        session["_csrf_token"] = token
+    return token
+
+
+app.jinja_env.globals["csrf_token"] = csrf_token
+
+
+@app.context_processor
+def inject_globals():
+    return {"csrf_token": csrf_token}
+
+
+@app.before_request
+def load_user_and_protect():
+    session.setdefault("user_id", service.get_guest_user_id())
+    user = service.get_user_by_id(int(session.get("user_id")))
+    if user is None:
+        session["user_id"] = service.get_guest_user_id()
+        user = service.get_user_by_id(service.get_guest_user_id())
+    g.current_user = user
+
+    if request.method == "POST":
+        expected = session.get("_csrf_token")
+        provided = request.form.get("_csrf_token") or request.headers.get("X-CSRFToken")
+        if not expected or not provided or provided != expected:
+            abort(400)
+
+
+@app.errorhandler(400)
+def bad_request(_error):
+    return render_page("index.html", active_page="index", overview_summary=["The request could not be processed."]), 400
+
+
+def _handle_post_success(message: str, *, category: str = "success"):
+    flash(message, category)
+
+
+def _handle_post_error(exc: Exception):
+    flash(str(exc), "danger")
+
+
+@app.route("/")
 def index():
-    return render_template('index.html')
+    user_id = current_user_id()
+    summary = service.build_overview_summary(user_id)
+    recent_posts = service.list_posts(limit=3)
+    recent_analyses = service.get_recent_analyses(user_id, limit=3)
+    return render_page(
+        "index.html",
+        active_page="index",
+        overview_summary=summary,
+        recent_posts=recent_posts,
+        recent_analyses=recent_analyses,
+    )
 
-@app.route('/habit_tracking', methods=['GET', 'POST'])
+
+@app.route("/welcome")
+def welcome():
+    return render_page("welcome_page.html", active_page="welcome")
+
+
+@app.route("/habit_tracking", methods=["GET", "POST"])
 def habit_tracking():
-    if request.method == 'POST':
-        if 'add_habit' in request.form:
-            habit = request.form['habit']
-            frequency = int(request.form['frequency'])
-            result = lumi.add_habit(habit, frequency)
-            flash(result)
-        elif 'update_habit' in request.form:
-            habit = request.form['habit']
-            completed = 'completed' in request.form
-            result = lumi.update_habit_completion(habit, completed)
-            flash(result)
-    
-    habits = lumi.get_habits()
-    return render_template('habit_tracking.html', habits=habits)
+    user_id = current_user_id()
 
-@app.route('/routine_analysis', methods=['GET', 'POST'])
+    if request.method == "POST":
+        try:
+            habit = require_text(request.form.get("habit"), "Habit name", max_length=80)
+            frequency = clamp_int(request.form.get("frequency"), "Daily frequency", minimum=1, maximum=12)
+            if "add_habit" in request.form:
+                _handle_post_success(service.create_habit(user_id, habit, frequency))
+            elif "update_habit" in request.form:
+                completed = parse_bool(request.form.get("completed"))
+                _handle_post_success(service.record_habit_completion(user_id, habit, completed))
+            else:
+                raise ValueError("Unknown habit action.")
+        except Exception as exc:
+            _handle_post_error(exc)
+        return redirect(url_for("habit_tracking"))
+
+    habits = service.list_habits(user_id)
+    return render_page("habit_tracking.html", active_page="habit_tracking", habits=habits)
+
+
+@app.route("/routine_analysis", methods=["GET", "POST"])
 def routine_analysis():
-    brief_analysis = ""
-    detailed_analysis = ""
-    if request.method == 'POST':
-        routine = request.form['routine']
-        if 'analyze_routine' in request.form:
-            brief_analysis = lumi.get_brief_routine_analysis(routine)
-        elif 'detailed_analysis' in request.form:
-            detailed_analysis = lumi.get_detailed_routine_analysis(routine)
-    
-    return render_template('routine_analysis.html', brief_analysis=brief_analysis, detailed_analysis=detailed_analysis)
+    user_id = current_user_id()
+    brief_analysis = None
+    detailed_analysis = None
 
-@app.route('/goals', methods=['GET', 'POST'])
+    if request.method == "POST":
+        try:
+            routine = require_text(
+                request.form.get("routine"),
+                "Routine",
+                max_length=3000,
+                allow_newlines=True,
+            )
+            if "analyze_routine" in request.form:
+                brief_analysis, rating = service.analyze_routine(routine, detailed=False)
+                service.save_analysis(user_id, "brief", routine, brief_analysis, rating)
+            elif "detailed_analysis" in request.form:
+                detailed_analysis, _ = service.analyze_routine(routine, detailed=True)
+                service.save_analysis(user_id, "detailed", routine, detailed_analysis, 0.0)
+            else:
+                raise ValueError("Unknown analysis action.")
+        except Exception as exc:
+            _handle_post_error(exc)
+
+    recent_analyses = service.get_recent_analyses(user_id, limit=5)
+    return render_page(
+        "routine_analysis.html",
+        active_page="routine_analysis",
+        brief_analysis=brief_analysis,
+        detailed_analysis=detailed_analysis,
+        recent_analyses=recent_analyses,
+    )
+
+
+@app.route("/goals", methods=["GET", "POST"])
 def goals():
-    if request.method == 'POST':
-        if 'add_goal' in request.form:
-            title = request.form['title']
-            description = request.form['description']
-            category = request.form['category']
-            start_date = request.form['start_date']
-            end_date = request.form['end_date']
-            result = lumi.add_goal(title, description, category, start_date, end_date)
-            flash(result)
-        elif 'update_progress' in request.form:
-            goal_id = int(request.form['goal_id'])
-            progress = float(request.form['progress'])
-            result = lumi.update_goal_progress(goal_id, progress)
-            flash(result)
-    
-    goals = lumi.get_goals()
-    return render_template('goals.html', goals=goals)
+    user_id = current_user_id()
 
-@app.route('/overview')
+    if request.method == "POST":
+        try:
+            if "add_goal" in request.form:
+                title = require_text(request.form.get("title"), "Goal title", max_length=120)
+                description = require_text(request.form.get("description"), "Description", max_length=600, allow_newlines=True)
+                category = parse_choice(request.form.get("category"), "Category", allowed=GOAL_CATEGORIES)
+                start_date = parse_date(request.form.get("start_date"), "Start date")
+                end_date = parse_date(request.form.get("end_date"), "End date")
+                _handle_post_success(service.create_goal(user_id, title, description, category, start_date, end_date))
+            elif "update_progress" in request.form:
+                goal_id = clamp_int(request.form.get("goal_id"), "Goal ID", minimum=1, maximum=10**9)
+                progress = clamp_float(request.form.get("progress"), "Progress", minimum=0, maximum=100)
+                _handle_post_success(service.update_goal_progress(user_id, goal_id, progress))
+            else:
+                raise ValueError("Unknown goal action.")
+        except Exception as exc:
+            _handle_post_error(exc)
+        return redirect(url_for("goals"))
+
+    goal_rows = service.list_goals(user_id)
+    return render_page("goals.html", active_page="goals", goals=goal_rows)
+
+
+@app.route("/overview")
 def overview():
-    habit_chart = create_habit_frequency_chart()
-    routine_chart = create_routine_rating_chart()
-    return render_template('overview.html', habit_chart=habit_chart, routine_chart=routine_chart)
+    user_id = current_user_id()
+    habit_data = service.get_habit_frequency(user_id)
+    routine_data = service.get_routine_ratings(user_id)
+    summary = service.build_overview_summary(user_id)
 
-@app.route('/stress_management', methods=['GET', 'POST'])
+    habit_chart = bar_chart(
+        [row["habit"] for row in habit_data],
+        [row["frequency"] for row in habit_data],
+        title="Habit Completions",
+        xlabel="Habit",
+        ylabel="Completions",
+    )
+
+    routine_chart = line_chart(
+        [row["created_at"][:10] for row in routine_data],
+        [row["rating"] for row in routine_data],
+        title="Routine Ratings",
+        xlabel="Date",
+        ylabel="Rating",
+        ymin=0,
+        ymax=10,
+    )
+
+    return render_page(
+        "overview.html",
+        active_page="overview",
+        habit_chart=habit_chart,
+        routine_chart=routine_chart,
+        overview_summary=summary,
+        recent_analyses=service.get_recent_analyses(user_id, limit=3),
+    )
+
+
+@app.route("/stress_management", methods=["GET", "POST"])
 def stress_management():
-    user_id = 1  # For simplicity, we're using a fixed user ID. In a real app, you'd get this from the logged-in user.
-    if request.method == 'POST':
-        stress_level = int(request.form['stress_level'])
-        result = lumi.log_stress_level(user_id, stress_level)
-        flash(result)
-    
-    stress_levels = lumi.get_stress_levels(user_id)
-    meditation = lumi.get_meditation_recommendation()
-    
-    stress_chart = create_stress_chart(stress_levels)
-    return render_template('stress_management.html', stress_levels=stress_levels, meditation=meditation, stress_chart=stress_chart)
+    user_id = current_user_id()
 
-@app.route('/productivity', methods=['GET', 'POST'])
+    if request.method == "POST":
+        try:
+            stress_level = clamp_int(request.form.get("stress_level"), "Stress level", minimum=1, maximum=10)
+            _handle_post_success(service.log_stress_level(user_id, stress_level))
+        except Exception as exc:
+            _handle_post_error(exc)
+        return redirect(url_for("stress_management"))
+
+    stress_levels = service.get_stress_levels(user_id)
+    stress_chart = line_chart(
+        [row["created_at"][:10] for row in stress_levels],
+        [row["stress_level"] for row in stress_levels],
+        title="Stress Levels",
+        xlabel="Date",
+        ylabel="Stress",
+        ymin=0,
+        ymax=10,
+    )
+    meditation = service.get_meditation_recommendation()
+    return render_page(
+        "stress_management.html",
+        active_page="stress_management",
+        stress_levels=stress_levels,
+        stress_chart=stress_chart,
+        meditation=meditation,
+    )
+
+
+@app.route("/productivity", methods=["GET", "POST"])
 def productivity():
-    user_id = 1  # For simplicity, we're using a fixed user ID. In a real app, you'd get this from the logged-in user.
-    if request.method == 'POST':
-        if 'add_task' in request.form:
-            title = request.form['title']
-            description = request.form['description']
-            priority = request.form['priority']
-            due_date = request.form['due_date']
-            result = lumi.add_task(user_id, title, description, priority, due_date)
-            flash(result)
-        elif 'update_task' in request.form:
-            task_id = int(request.form['task_id'])
-            completed = 'completed' in request.form
-            result = lumi.update_task(task_id, completed)
-            flash(result)
-    
-    tasks = lumi.get_tasks(user_id)
-    return render_template('productivity.html', tasks=tasks)
+    user_id = current_user_id()
 
-@app.route('/health_wellness', methods=['GET', 'POST'])
+    if request.method == "POST":
+        try:
+            if "add_task" in request.form:
+                title = require_text(request.form.get("title"), "Task title", max_length=120)
+                description = require_text(request.form.get("description"), "Description", max_length=600, allow_newlines=True)
+                priority = parse_choice(request.form.get("priority"), "Priority", allowed=TASK_PRIORITIES)
+                due_date = parse_date(request.form.get("due_date"), "Due date")
+                _handle_post_success(service.create_task(user_id, title, description, priority, due_date))
+            elif "update_task" in request.form:
+                task_id = clamp_int(request.form.get("task_id"), "Task ID", minimum=1, maximum=10**9)
+                completed = parse_bool(request.form.get("completed"))
+                _handle_post_success(service.update_task(user_id, task_id, completed))
+            else:
+                raise ValueError("Unknown task action.")
+        except Exception as exc:
+            _handle_post_error(exc)
+        return redirect(url_for("productivity"))
+
+    tasks = service.list_tasks(user_id)
+    return render_page("productivity.html", active_page="productivity", tasks=tasks)
+
+
+@app.route("/health_wellness", methods=["GET", "POST"])
 def health_wellness():
-    user_id = 1  # For simplicity, we're using a fixed user ID. In a real app, you'd get this from the logged-in user.
-    if request.method == 'POST':
-        if 'log_nutrition' in request.form:
-            meal = request.form['meal']
-            calories = int(request.form['calories'])
-            result = lumi.log_nutrition(user_id, meal, calories)
-            flash(result)
-        elif 'log_sleep' in request.form:
-            sleep_duration = float(request.form['sleep_duration'])
-            sleep_quality = int(request.form['sleep_quality'])
-            result = lumi.log_sleep(user_id, sleep_duration, sleep_quality)
-            flash(result)
-    
-    nutrition_logs = lumi.get_nutrition_logs(user_id)
-    sleep_logs = lumi.get_sleep_logs(user_id)
-    
-    nutrition_chart = create_nutrition_chart(nutrition_logs)
-    sleep_chart = create_sleep_chart(sleep_logs)
-    
-    return render_template('health_wellness.html', nutrition_logs=nutrition_logs, sleep_logs=sleep_logs, nutrition_chart=nutrition_chart, sleep_chart=sleep_chart)
+    user_id = current_user_id()
 
-@app.route('/community', methods=['GET', 'POST'])
+    if request.method == "POST":
+        try:
+            if "log_nutrition" in request.form:
+                meal = require_text(request.form.get("meal"), "Meal", max_length=120)
+                calories = clamp_int(request.form.get("calories"), "Calories", minimum=1, maximum=10000)
+                _handle_post_success(service.log_nutrition(user_id, meal, calories))
+            elif "log_sleep" in request.form:
+                sleep_duration = clamp_float(request.form.get("sleep_duration"), "Sleep duration", minimum=0.1, maximum=24)
+                sleep_quality = clamp_int(request.form.get("sleep_quality"), "Sleep quality", minimum=1, maximum=10)
+                _handle_post_success(service.log_sleep(user_id, sleep_duration, sleep_quality))
+            else:
+                raise ValueError("Unknown wellness action.")
+        except Exception as exc:
+            _handle_post_error(exc)
+        return redirect(url_for("health_wellness"))
+
+    nutrition_logs = service.get_nutrition_logs(user_id)
+    sleep_logs = service.get_sleep_logs(user_id)
+    nutrition_chart = bar_chart(
+        [row["created_on"] for row in nutrition_logs],
+        [row["total_calories"] for row in nutrition_logs],
+        title="Daily Calorie Intake",
+        xlabel="Date",
+        ylabel="Calories",
+    )
+    sleep_chart = scatter_chart(
+        [row["created_on"] for row in sleep_logs],
+        [row["sleep_duration"] for row in sleep_logs],
+        [row["sleep_quality"] for row in sleep_logs],
+        title="Sleep Duration and Quality",
+        xlabel="Date",
+        ylabel="Hours Slept",
+    )
+    return render_page(
+        "health_wellness.html",
+        active_page="health_wellness",
+        nutrition_logs=nutrition_logs,
+        sleep_logs=sleep_logs,
+        nutrition_chart=nutrition_chart,
+        sleep_chart=sleep_chart,
+    )
+
+
+@app.route("/community", methods=["GET", "POST"])
 def community():
-    user_id = 1  # For simplicity, we're using a fixed user ID. In a real app, you'd get this from the logged-in user.
-    if request.method == 'POST':
-        title = request.form['title']
-        content = request.form['content']
-        category = request.form['category']
-        result = lumi.add_community_post(user_id, title, content, category)
-        flash(result)
-    
-    posts = lumi.get_community_posts()
-    return render_template('community.html', posts=posts)
+    user_id = current_user_id()
 
-def create_habit_frequency_chart():
-    habit_counts = lumi.get_habit_frequency()
-    if not habit_counts:
-        return None
+    if request.method == "POST":
+        try:
+            title = require_text(request.form.get("title"), "Title", max_length=120)
+            content = require_text(request.form.get("content"), "Content", max_length=1200, allow_newlines=True)
+            category = parse_choice(request.form.get("category"), "Category", allowed=POST_CATEGORIES)
+            _handle_post_success(service.create_post(user_id, title, content, category))
+        except Exception as exc:
+            _handle_post_error(exc)
+        return redirect(url_for("community"))
 
-    plt.figure(figsize=(10, 6))
-    sns.barplot(x=[h[0] for h in habit_counts], y=[h[1] for h in habit_counts])
-    plt.title('Habit Frequency (Last 7 Days)')
-    plt.xlabel('Habits')
-    plt.ylabel('Frequency')
-    plt.xticks(rotation=45, ha='right')
-    
-    img = io.BytesIO()
-    plt.savefig(img, format='png', bbox_inches='tight')
-    img.seek(0)
-    plt.close()
-    return base64.b64encode(img.getvalue()).decode()
+    posts = service.list_posts(limit=10)
+    return render_page("community.html", active_page="community", posts=posts)
 
-def create_routine_rating_chart():
-    recent_analyses = lumi.get_routine_ratings()
-    
-    if not recent_analyses:
-        return None
 
-    plt.figure(figsize=(10, 6))
-    sns.lineplot(x=[datetime.strptime(str(r[0]), '%Y-%m-%d') for r in recent_analyses], y=[r[1] for r in recent_analyses])
-    plt.title('Routine Ratings (Last 7 Days)')
-    plt.xlabel('Date')
-    plt.ylabel('Rating (out of 10)')
-    plt.ylim(0, 10)
-    plt.xticks(rotation=45, ha='right')
-    
-    img = io.BytesIO()
-    plt.savefig(img, format='png', bbox_inches='tight')
-    img.seek(0)
-    plt.close()
-    return base64.b64encode(img.getvalue()).decode()
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "GET":
+        return render_template("login.html")
 
-def create_stress_chart(stress_levels):
-    if not stress_levels:
-        return None
+    try:
+        payload = request.get_json(silent=True) or request.form
+        identity = require_text(payload.get("identity") or payload.get("username"), "Username or email", max_length=120)
+        password = require_text(payload.get("password"), "Password", max_length=256)
+        user = service.authenticate_user(identity, password)
+        if not user:
+            return jsonify({"message": "Invalid credentials."}), 400
 
-    plt.figure(figsize=(10, 6))
-    sns.lineplot(x=[datetime.strptime(str(s[0]), '%Y-%m-%d') for s in stress_levels], y=[s[1] for s in stress_levels])
-    plt.title('Stress Levels (Last 7 Days)')
-    plt.xlabel('Date')
-    plt.ylabel('Stress Level (1-10)')
-    plt.ylim(0, 10)
-    plt.xticks(rotation=45, ha='right')
-    
-    img = io.BytesIO()
-    plt.savefig(img, format='png', bbox_inches='tight')
-    img.seek(0)
-    plt.close()
-    return base64.b64encode(img.getvalue()).decode()
+        session["user_id"] = user["id"]
+        session["username"] = user["username"]
+        return jsonify({"message": "Logged in successfully.", "user": {"id": user["id"], "username": user["username"]}})
+    except ValueError as exc:
+        return jsonify({"message": str(exc)}), 400
+    except Exception:
+        return jsonify({"message": "Could not log in."}), 400
 
-def create_nutrition_chart(nutrition_logs):
-    if not nutrition_logs:
-        return None
 
-    plt.figure(figsize=(10, 6))
-    sns.barplot(x=[n[0] for n in nutrition_logs], y=[n[1] for n in nutrition_logs])
-    plt.title('Daily Calorie Intake (Last 7 Days)')
-    plt.xlabel('Date')
-    plt.ylabel('Calories')
-    plt.xticks(rotation=45, ha='right')
-    
-    img = io.BytesIO()
-    plt.savefig(img, format='png', bbox_inches='tight')
-    img.seek(0)
-    plt.close()
-    return base64.b64encode(img.getvalue()).decode()
+@app.route("/signup", methods=["POST"])
+def signup():
+    try:
+        payload = request.get_json(silent=True) or request.form
+        username = require_text(payload.get("username"), "Username", max_length=40)
+        email = require_text(payload.get("email"), "Email", max_length=120)
+        password = require_text(payload.get("password"), "Password", max_length=256)
 
-def create_sleep_chart(sleep_logs):
-    if not sleep_logs:
-        return None
+        if len(password) < 8:
+            return jsonify({"message": "Password must be at least 8 characters long."}), 400
 
-    plt.figure(figsize=(10, 6))
-    sns.scatterplot(x=[s[0] for s in sleep_logs], y=[s[1] for s in sleep_logs], hue=[s[2] for s in sleep_logs], palette='viridis', size=[s[2] for s in sleep_logs], sizes=(20, 200))
-    plt.title('Sleep Duration and Quality (Last 7 Days)')
-    plt.xlabel('Date')
-    plt.ylabel('Sleep Duration (hours)')
-    plt.xticks(rotation=45, ha='right')
-    
-    img = io.BytesIO()
-    plt.savefig(img, format='png', bbox_inches='tight')
-    img.seek(0)
-    plt.close()
-    return base64.b64encode(img.getvalue()).decode()
+        user = service.create_user(username, email, password)
+    except sqlite3.IntegrityError:
+        return jsonify({"message": "Username or email already exists."}), 400
+    except ValueError as exc:
+        return jsonify({"message": str(exc)}), 400
+    except Exception:
+        return jsonify({"message": "Could not create account."}), 400
 
-if __name__ == '__main__':
+    session["user_id"] = user["id"]
+    session["username"] = user["username"]
+    return jsonify({"message": "Account created successfully.", "user": {"id": user["id"], "username": user["username"]}})
+
+
+@app.route("/logout", methods=["POST"])
+def logout():
+    session.clear()
+    return redirect(url_for("welcome"))
+
+
+if __name__ == "__main__":
     app.run(debug=True)
